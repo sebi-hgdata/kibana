@@ -109,6 +109,82 @@ define(function (require) {
           $scope.searchSource.onError(notify.error).catch(notify.fatal);
         }));
 
+        var saveAs = require('@spalger/filesaver').saveAs;
+
+
+        $scope.exportAsCsv = function (formatted) {
+          var csv = {
+            separator: config.get('csv:separator'),
+            quoteValues: config.get('csv:quoteValues')
+          };
+
+          var rows = $scope.hits;
+          var columns = $scope.columns;
+          var nonAlphaNumRE = /[^a-zA-Z0-9]/;
+          var allDoubleQuoteRE = /"/g;
+          var filename = formatted ? 'formatted.csv' : 'raw.csv';
+
+          function escape(val) {
+            if (_.isObject(val)) val = val.valueOf();
+            val = String(val);
+            if (csv.quoteValues && nonAlphaNumRE.test(val)) {
+              val = '"' + val.replace(allDoubleQuoteRE, '""') + '"';
+            }
+            return val;
+          }
+
+          function formatField(value, name) {
+            //var defaultFormat = courier.indexPatterns.fieldFormats.defaultByType.string;
+            //var field = $scope.indexPattern.fields.byName[name];
+            //var formatter = (field && field.format) ? field.format : defaultFormat;
+
+            //return formatter.convert(value, 'text');
+
+            if (name === '@timestamp' || name === 'startDate' || name === 'endDate') {
+              return new Date(+value).toISOString();
+            } else {
+              return value;
+            }
+          }
+
+          function formatRow(row) {
+            $scope.indexPattern.flattenHit(row);
+            row.$$_formatted = row.$$_formatted || _.mapValues(row.$$_flattened, formatField);
+            return row.$$_formatted;
+          }
+
+          // get column values for each row
+          var csvRows = rows.map(function (row, i) {
+            return columns.map(function (column, j) {
+              var val;
+
+              if (formatted) {
+                val = (row.$$_formatted || formatRow(row))[column];
+              } else {
+                val = (row.$$_flattened || formatRow(row))[column];
+              }
+
+              val = (val == null) ? '' : val;
+
+              return val;
+            });
+          });
+
+          // escape each cell in each row
+          csvRows = csvRows.map(function (row, i) {
+            return row.map(escape);
+          });
+
+          // add the columns to the rows
+          csvRows.unshift(columns.map(escape));
+
+          var data = csvRows.map(function (row) {
+            return row.join(csv.separator) + '\r\n';
+          }).join('');
+
+
+          saveAs(new Blob([data], { type: 'text/plain' }), filename);
+        };
       }
     };
   });
