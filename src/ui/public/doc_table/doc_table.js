@@ -3,7 +3,6 @@ define(function (require) {
 
   var html = require('ui/doc_table/doc_table.html');
   var getSort = require('ui/doc_table/lib/get_sort');
-  var saveAs = require('file_saver');
 
   require('ui/doc_table/doc_table.less');
   require('ui/directives/truncated');
@@ -12,7 +11,7 @@ define(function (require) {
   require('ui/doc_table/components/table_row');
 
   require('ui/modules').get('kibana')
-  .directive('docTable', function (config, Notifier, getAppState, courier) {
+  .directive('docTable', function (config, Notifier, getAppState) {
     return {
       restrict: 'E',
       template: html,
@@ -109,7 +108,11 @@ define(function (require) {
 
           $scope.searchSource.onError(notify.error).catch(notify.fatal);
         }));
-$scope.exportAsCsv = function (formatted) {
+
+        var saveAs = require('@spalger/filesaver').saveAs;
+
+
+        $scope.exportAsCsv = function (formatted) {
           var csv = {
             separator: config.get('csv:separator'),
             quoteValues: config.get('csv:quoteValues')
@@ -137,7 +140,7 @@ $scope.exportAsCsv = function (formatted) {
 
             //return formatter.convert(value, 'text');
 
-            if (name == "@timestamp" || name == "startDate" || name == "endDate") {
+            if (name === '@timestamp' || name === 'startDate' || name === 'endDate') {
               return new Date(+value).toISOString();
             } else {
               return value;
